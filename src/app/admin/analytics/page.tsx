@@ -1,6 +1,8 @@
 import { getModuleStats, getLearnerStats } from "@/lib/services/training-analytics";
 import { BarChart3, Users, BookOpen, TrendingUp } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function AnalyticsPage() {
   const [moduleStats, learnerStats] = await Promise.all([
     getModuleStats(),

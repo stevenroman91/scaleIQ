@@ -1,6 +1,8 @@
 import { getLearnerStats } from "@/lib/services/training-analytics";
 import { Users, AlertTriangle, TrendingUp, Award, Clock } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function AdminLearnersPage() {
   const learners = await getLearnerStats();
 
