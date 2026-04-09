@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { Phone, Shield, Zap, Target } from "lucide-react";
 import { SimulationLauncher } from "@/components/simulation/SimulationLauncher";
 
+export const dynamic = "force-dynamic";
+
 const difficultyIcons: Record<string, typeof Shield> = {
   BEGINNER: Shield,
   INTERMEDIATE: Zap,

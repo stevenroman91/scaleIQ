@@ -2,6 +2,8 @@ import { db } from "@/lib/db";
 import { BookOpen, Plus, Eye, EyeOff, Clock, FileText, Pencil } from "lucide-react";
 import Link from "next/link";
 
+export const dynamic = "force-dynamic";
+
 const categoryLabels: Record<string, string> = {
   ONBOARDING: "Onboarding",
   FUNDAMENTALS: "Fondamentaux",

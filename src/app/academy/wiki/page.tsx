@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { FileText, Search } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 export default async function WikiPage() {
   const articles = await db.wikiArticle.findMany({
     where: { published: true },

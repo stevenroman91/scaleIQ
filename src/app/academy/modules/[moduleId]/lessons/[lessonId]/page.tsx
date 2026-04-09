@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { notFound, redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import Link from "next/link";
 import { ArrowLeft, BookOpen, Video, HelpCircle } from "lucide-react";
 import QuizPlayer from "@/components/academy/QuizPlayer";

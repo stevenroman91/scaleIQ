@@ -1,6 +1,8 @@
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { redirect } from "next/navigation";
+
+export const dynamic = "force-dynamic";
 import { TrendingUp, BookOpen, Phone, Award, CheckCircle, Clock } from "lucide-react";
 
 export default async function ProgressPage() {

@@ -4,6 +4,8 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { BookOpen, Video, HelpCircle, Phone, PenTool, Clock, CheckCircle } from "lucide-react";
 
+export const dynamic = "force-dynamic";
+
 const lessonTypeIcons: Record<string, typeof BookOpen> = {
   ARTICLE: BookOpen,
   VIDEO: Video,
