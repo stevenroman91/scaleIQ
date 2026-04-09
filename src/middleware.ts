@@ -30,6 +30,8 @@ export default auth((req) => {
   return NextResponse.next();
 });
 
+export const runtime = "nodejs";
+
 export const config = {
   matcher: ["/academy/:path*", "/admin/:path*"],
 };
