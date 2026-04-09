@@ -1,5 +1,7 @@
 import { db } from "@/lib/db";
+import { auth } from "@/lib/auth";
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { BookOpen, Video, HelpCircle, Phone, PenTool, Clock, CheckCircle } from "lucide-react";
 
 const lessonTypeIcons: Record<string, typeof BookOpen> = {
@@ -15,6 +17,8 @@ export default async function ModuleDetailPage({
 }: {
   params: Promise<{ moduleId: string }>;
 }) {
+  const session = await auth();
+  const userId = session?.user?.id;
   const { moduleId } = await params;
 
   const module = await db.module.findUnique({
@@ -36,6 +40,19 @@ export default async function ModuleDetailPage({
   });
 
   if (!module) notFound();
+
+  // Fetch user progress for lessons in this module
+  const userProgress = userId
+    ? await db.lessonProgress.findMany({
+        where: {
+          userId,
+          lessonId: { in: module.lessons.map((l) => l.id) },
+        },
+        select: { lessonId: true, completed: true, score: true },
+      })
+    : [];
+  const progressMap = new Map(userProgress.map((p) => [p.lessonId, p]));
+  const completedCount = userProgress.filter((p) => p.completed).length;
 
   const avgRating =
     module.feedback.length > 0
@@ -73,15 +90,40 @@ export default async function ModuleDetailPage({
         </div>
       )}
 
+      {/* Progress overview */}
+      {module.lessons.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">
+              Progression : {completedCount} / {module.lessons.length} leçons
+            </span>
+            <span className="font-medium">
+              {Math.round((completedCount / module.lessons.length) * 100)}%
+            </span>
+          </div>
+          <div className="h-2 bg-muted rounded-full overflow-hidden">
+            <div
+              className="h-full bg-primary rounded-full transition-all"
+              style={{
+                width: `${(completedCount / module.lessons.length) * 100}%`,
+              }}
+            />
+          </div>
+        </div>
+      )}
+
       {/* Lessons list */}
       <div className="space-y-2">
         <h2 className="text-lg font-semibold">Programme</h2>
         {module.lessons.map((lesson, i) => {
           const Icon = lessonTypeIcons[lesson.type] || BookOpen;
+          const lessonProgress = progressMap.get(lesson.id);
+          const isComplete = lessonProgress?.completed || false;
           return (
-            <div
+            <Link
               key={lesson.id}
-              className="bg-card border border-border rounded-lg p-4 flex items-center gap-4"
+              href={`/academy/modules/${moduleId}/lessons/${lesson.id}`}
+              className="bg-card border border-border rounded-lg p-4 flex items-center gap-4 hover:border-primary/50 transition block"
             >
               <div className="w-8 h-8 bg-muted rounded-lg flex items-center justify-center flex-shrink-0">
                 <span className="text-sm font-medium text-muted-foreground">
@@ -97,10 +139,21 @@ export default async function ModuleDetailPage({
                   {lesson._count.questions > 0 && (
                     <span>{lesson._count.questions} questions</span>
                   )}
+                  {lessonProgress?.score != null && (
+                    <span className="text-primary font-medium">
+                      Score: {lessonProgress.score}%
+                    </span>
+                  )}
                 </div>
               </div>
-              <CheckCircle className="w-5 h-5 text-muted-foreground/30" />
-            </div>
+              <CheckCircle
+                className={`w-5 h-5 flex-shrink-0 ${
+                  isComplete
+                    ? "text-green-500"
+                    : "text-muted-foreground/30"
+                }`}
+              />
+            </Link>
           );
         })}
       </div>
