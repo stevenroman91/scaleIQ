@@ -1,4 +1,5 @@
 import { PrismaClient } from "@prisma/client";
+import { seedLessons } from "./seed-lessons";
 
 const prisma = new PrismaClient();
 
@@ -596,6 +597,9 @@ Réponds en français. Utilise 2-3 types d'objections différents au cours de la
       create: article,
     });
   }
+
+  // Seed lesson content and quizzes
+  await seedLessons();
 
   console.log("Seeding complete!");
 }
