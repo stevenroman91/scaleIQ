@@ -1,16 +1,35 @@
 @import "tailwindcss";
 
 @theme {
-  --color-background: hsl(0 0% 100%);
-  --color-foreground: hsl(222.2 84% 4.9%);
-  --color-card: hsl(0 0% 100%);
-  --color-card-foreground: hsl(222.2 84% 4.9%);
-  --color-primary: hsl(262.1 83.3% 57.8%);
-  --color-primary-foreground: hsl(210 40% 98%);
-  --color-muted: hsl(210 40% 96.1%);
-  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
-  --color-accent: hsl(210 40% 96.1%);
-  --color-border: hsl(214.3 31.8% 91.4%);
+  /* Light mode colors */
+  --color-background: #ffffff;
+  --color-foreground: #0f172a;
+  --color-card: #ffffff;
+  --color-card-foreground: #0f172a;
+  --color-primary: #7c3aed;
+  --color-primary-foreground: #f8fafc;
+  --color-muted: #f1f5f9;
+  --color-muted-foreground: #64748b;
+  --color-accent: #f1f5f9;
+  --color-accent-foreground: #0f172a;
+  --color-border: #e2e8f0;
+  --color-destructive: #ef4444;
+  --color-destructive-foreground: #f8fafc;
+
+  /* Semantic colors for status */
+  --color-green-50: #f0fdf4;
+  --color-green-100: #dcfce7;
+  --color-green-600: #16a34a;
+  --color-purple-50: #faf5ff;
+  --color-purple-600: #9333ea;
+  --color-blue-50: #eff6ff;
+  --color-blue-600: #2563eb;
+  --color-yellow-50: #fefce8;
+  --color-yellow-600: #ca8a04;
+  --color-orange-50: #fff7ed;
+  --color-orange-600: #ea580c;
+  --color-red-50: #fef2f2;
+  --color-red-600: #dc2626;
 }
 
 * {
@@ -18,7 +37,7 @@
 }
 
 body {
-  background: var(--color-background);
+  background-color: var(--color-background);
   color: var(--color-foreground);
-  font-family: system-ui, -apple-system, sans-serif;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
