@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// USERS & AUTH
+// ============================================================================
+
+model User {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  image         String?
+  emailVerified DateTime? @map("email_verified")
+  passwordHash  String?   @map("password_hash")
+  role          UserRole  @default(LEARNER)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  accounts      Account[]
+  sessions      Session[]
+  progress      LessonProgress[]
+  simulations   CallSimulation[]
+  certifications Certification[]
+  quizAttempts  QuizAttempt[]
+  onboarding    OnboardingProgress?
+
+  @@map("users")
+}
+
+enum UserRole {
+  LEARNER
+  TRAINER
+  ADMIN
+}
+
+model Account {
+  userId            String  @map("user_id")
+  type              String
+  provider          String
+  providerAccountId String  @map("provider_account_id")
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String? @db.Text
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  sessionToken String   @unique @map("session_token")
+  userId       String   @map("user_id")
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============================================================================
+// E-LEARNING MODULES
+// ============================================================================
+
+model Module {
+  id          String     @id @default(cuid())
+  title       String
+  description String?    @db.Text
+  category    ModuleCategory @default(FUNDAMENTALS)
+  difficulty  Difficulty @default(BEGINNER)
+  position    Int        @default(0)
+  published   Boolean    @default(false)
+  duration    Int?       // estimated minutes
+  imageUrl    String?    @map("image_url")
+
+  // Prerequisites
+  prerequisiteId String? @map("prerequisite_id")
+  prerequisite   Module? @relation("ModulePrerequisite", fields: [prerequisiteId], references: [id])
+  dependents     Module[] @relation("ModulePrerequisite")
+
+  lessons     Lesson[]
+  feedback    ModuleFeedback[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("modules")
+}
+
+enum ModuleCategory {
+  ONBOARDING       // Who we are
+  FUNDAMENTALS     // SDR basics
+  PROSPECTING      // Research & targeting
+  COLD_CALLING     // Phone techniques
+  OBJECTION_HANDLING // Handling objections
+  CLOSING          // Closing & next steps
+  ADVANCED         // Expert-level techniques
+  CERTIFICATION    // Certification prep
+}
+
+enum Difficulty {
+  BEGINNER
+  INTERMEDIATE
+  ADVANCED
+  EXPERT
+}
+
+model Lesson {
+  id       String     @id @default(cuid())
+  title    String
+  type     LessonType @default(ARTICLE)
+  content  String?    @db.Text // Markdown for articles, URL for videos
+  position Int        @default(0)
+  duration Int?       // estimated minutes
+
+  moduleId String @map("module_id")
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  questions QuizQuestion[]
+  progress  LessonProgress[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("lessons")
+}
+
+enum LessonType {
+  VIDEO
+  ARTICLE
+  QUIZ
+  SIMULATION  // Call simulation exercise
+  EXERCISE    // Practical exercise
+}
+
+model QuizQuestion {
+  id           String  @id @default(cuid())
+  question     String  @db.Text
+  options      Json    // string[]
+  correctIndex Int     @map("correct_index")
+  explanation  String? @db.Text
+  position     Int     @default(0)
+
+  lessonId String @map("lesson_id")
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  attempts QuizAttempt[]
+
+  @@map("quiz_questions")
+}
+
+model QuizAttempt {
+  id            String  @id @default(cuid())
+  selectedIndex Int     @map("selected_index")
+  isCorrect     Boolean @map("is_correct")
+
+  userId     String @map("user_id")
+  questionId String @map("question_id")
+
+  user     User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  question QuizQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("quiz_attempts")
+}
+
+// ============================================================================
+// PROGRESS TRACKING
+// ============================================================================
+
+model LessonProgress {
+  id        String  @id @default(cuid())
+  completed Boolean @default(false)
+  score     Int?    // Quiz score percentage
+  timeSpent Int     @default(0) @map("time_spent") // seconds
+
+  userId   String @map("user_id")
+  lessonId String @map("lesson_id")
+
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  completedAt DateTime? @map("completed_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@unique([userId, lessonId])
+  @@map("lesson_progress")
+}
+
+model ModuleFeedback {
+  id        String  @id @default(cuid())
+  rating    Int     // 1-5
+  npsScore  Int?    @map("nps_score") // 0-10
+  strengths String? @db.Text
+  remarks   String? @db.Text
+
+  moduleId String @map("module_id")
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("module_feedback")
+}
+
+// ============================================================================
+// CALL SIMULATION (AI Tutor Bot)
+// ============================================================================
+
+model ObjectionProfile {
+  id          String @id @default(cuid())
+  name        String // Le pressé, Le sceptique, etc.
+  slug        String @unique
+  description String @db.Text
+  difficulty  Difficulty @default(INTERMEDIATE)
+  systemPrompt String @map("system_prompt") @db.Text // AI persona prompt
+  objections  Json   // Array of possible objections
+  isActive    Boolean @default(true) @map("is_active")
+
+  simulations CallSimulation[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("objection_profiles")
+}
+
+model CallSimulation {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  profileId     String   @map("profile_id")
+  transcript    Json?    // Array of { role, content, timestamp }
+  durationSeconds Int?   @map("duration_seconds")
+  status        SimulationStatus @default(IN_PROGRESS)
+
+  // AI Scoring
+  overallScore    Int?   @map("overall_score") // 0-100
+  openingScore    Int?   @map("opening_score") // 0-20
+  discoveryScore  Int?   @map("discovery_score") // 0-20
+  argumentScore   Int?   @map("argument_score") // 0-20
+  objectionScore  Int?   @map("objection_score") // 0-20
+  closingScore    Int?   @map("closing_score") // 0-20
+  feedback        Json?  // { strengths: [], improvements: [], tips: [] }
+
+  user    User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  profile ObjectionProfile @relation(fields: [profileId], references: [id])
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("call_simulations")
+}
+
+enum SimulationStatus {
+  IN_PROGRESS
+  COMPLETED
+  ABANDONED
+}
+
+// ============================================================================
+// CERTIFICATIONS
+// ============================================================================
+
+model Certification {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  title       String
+  level       CertificationLevel @default(BRONZE)
+  issuedAt    DateTime @default(now()) @map("issued_at")
+  expiresAt   DateTime? @map("expires_at")
+  certificateUrl String? @map("certificate_url")
+
+  // Requirements met
+  modulesCompleted Int @default(0) @map("modules_completed")
+  avgQuizScore     Int @default(0) @map("avg_quiz_score")
+  simulationsCompleted Int @default(0) @map("simulations_completed")
+  avgSimulationScore Int @default(0) @map("avg_simulation_score")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("certifications")
+}
+
+enum CertificationLevel {
+  BRONZE    // Completed fundamentals
+  SILVER    // Completed intermediate + good scores
+  GOLD      // Completed advanced + excellent scores
+  PLATINUM  // All modules + top simulation scores
+}
+
+// ============================================================================
+// ONBOARDING ("Who we are" flow)
+// ============================================================================
+
+model OnboardingProgress {
+  id     String @id @default(cuid())
+  userId String @unique @map("user_id")
+
+  missionCompleted Boolean @default(false) @map("mission_completed")
+  cultureCompleted Boolean @default(false) @map("culture_completed")
+  valuesCompleted  Boolean @default(false) @map("values_completed")
+  processCompleted Boolean @default(false) @map("process_completed")
+  certified        Boolean @default(false)
+  certifiedAt      DateTime? @map("certified_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("onboarding_progress")
+}
+
+// ============================================================================
+// WIKI (Knowledge Base)
+// ============================================================================
+
+model WikiArticle {
+  id       String @id @default(cuid())
+  title    String
+  slug     String @unique
+  content  String @db.Text // Markdown
+  category String
+  position Int    @default(0)
+  published Boolean @default(true)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("wiki_articles")
+}
