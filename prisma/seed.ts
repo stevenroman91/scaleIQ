@@ -276,6 +276,52 @@ Réponds en français. Utilise 2-3 types d'objections différents au cours de la
       duration: 90,
       published: true,
     },
+    // Cold calling techniques modules
+    {
+      title: "L'Ouverture parfaite : capter l'attention en 20 secondes",
+      description: "Maîtrisez les techniques d'ouverture en cold calling : les patterns d'accroche qui fonctionnent, la personnalisation en temps réel et comment éviter les erreurs classiques des 20 premières secondes.",
+      category: "COLD_CALLING" as const,
+      difficulty: "INTERMEDIATE" as const,
+      position: 17,
+      duration: 40,
+      published: true,
+    },
+    {
+      title: "Qualification en profondeur : identifier les vrais besoins",
+      description: "Techniques avancées de qualification pour découvrir les pain points cachés, évaluer l'urgence et valider le potentiel business. Questions ouvertes, écoute active et mapping des enjeux.",
+      category: "COLD_CALLING" as const,
+      difficulty: "INTERMEDIATE" as const,
+      position: 18,
+      duration: 50,
+      published: true,
+    },
+    {
+      title: "Gestion des objections en cold calling",
+      description: "Méthode LAER (Listen, Acknowledge, Explore, Respond) appliquée aux objections les plus fréquentes en cold calling. Transformer chaque objection en opportunité de qualifier davantage.",
+      category: "OBJECTION_HANDLING" as const,
+      difficulty: "ADVANCED" as const,
+      position: 19,
+      duration: 55,
+      published: true,
+    },
+    {
+      title: "Le Closing en cold call : obtenir le rendez-vous",
+      description: "Techniques de closing adaptées au cold calling : le trial close, le assumptive close et le soft close. Savoir quand et comment demander le rendez-vous pour maximiser le taux de conversion.",
+      category: "CLOSING" as const,
+      difficulty: "ADVANCED" as const,
+      position: 20,
+      duration: 45,
+      published: true,
+    },
+    {
+      title: "Le Follow-up stratégique après le cold call",
+      description: "Construire une séquence de suivi efficace après le premier appel : timing optimal, canaux complémentaires (email, LinkedIn), messages personnalisés et gestion des non-réponses pour relancer sans agacer.",
+      category: "COLD_CALLING" as const,
+      difficulty: "INTERMEDIATE" as const,
+      position: 21,
+      duration: 35,
+      published: true,
+    },
   ];
 
   for (const mod of modules) {
