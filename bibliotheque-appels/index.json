@@ -1,0 +1,53 @@
+{
+  "version": "1.0.0",
+  "description": "Bibliothèque d'appels de référence ScaleAcademy — extraits de ScaleFast/ScaleCall",
+  "last_updated": "2026-04-10",
+  "status": "framework_ready_pending_data",
+  "targets": {
+    "exemplaires": 15,
+    "erreurs_instructives": 15,
+    "objections": 10,
+    "sectoriels": 10,
+    "total": 50
+  },
+  "current_counts": {
+    "exemplaires": 0,
+    "erreurs_instructives": 0,
+    "objections": 0,
+    "sectoriels": 0,
+    "total": 0
+  },
+  "pipeline_status": {
+    "scaleCall_api_credentials": "pending",
+    "scaleFast_api_credentials": "pending",
+    "rgpd_dpo_validation": "pending",
+    "first_batch_extraction": "not_started",
+    "anonymization_pipeline": "not_started"
+  },
+  "schema": {
+    "call_record": {
+      "id": "string (CALL-XXX)",
+      "source": "scaleCall | scaleFast | manual",
+      "date_appel": "ISO8601",
+      "duree": "string (ex: 8min32s)",
+      "duree_secondes": "integer",
+      "categorie": "exemplaire | erreur | objection | sectoriel",
+      "secteur_prospect": "string",
+      "taille_entreprise": "string (ex: 50-200 salaries)",
+      "fonction_prospect": "string",
+      "etape_pipeline": "cold | qualification | nurture | closing",
+      "resultat": "rdv_pris | no_rdv | no_show | perdu | gagne",
+      "competences_ciblees": ["array of strings"],
+      "modules_associes": ["array of module IDs"],
+      "objections_presentes": ["array of strings"],
+      "niveau_difficulte": "debutant | intermediaire | avance",
+      "transcript_disponible": "boolean",
+      "audio_disponible": "boolean",
+      "annotations_pedagogiques": "string",
+      "anonymise": "boolean",
+      "valide_par_formateur": "boolean",
+      "score_qualite": "integer (1-5)"
+    }
+  },
+  "calls": []
+}
