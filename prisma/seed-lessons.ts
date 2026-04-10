@@ -1,5 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 import { welcomeLessons } from "./seed-data/welcome";
+import { mindsetLessons } from "./seed-data/mindset";
 
 const prisma = new PrismaClient();
 
@@ -68,8 +69,8 @@ async function seedLessons(): Promise<void> {
 
   const moduleMap: Array<[string, LessonData[]]> = [
     ["Welcome", welcomeLessons as LessonData[]],
+    ["01 - The Mindset", mindsetLessons as LessonData[]],
     // Additional modules added as they are imported:
-    // ["01 - The Mindset", mindsetLessons as LessonData[]],
     // ["02A - The Gatekeeper", gatekeeperLessons as LessonData[]],
     // ["02B - The Opener", openerLessons as LessonData[]],
     // ["03 - The Pitch", pitchLessons as LessonData[]],
