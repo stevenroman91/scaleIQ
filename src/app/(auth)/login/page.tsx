@@ -111,6 +111,12 @@ export default function LoginPage() {
         </Suspense>
 
         <p className="text-center text-sm text-muted-foreground">
+          <Link href="/forgot-password" className="text-primary hover:underline font-medium">
+            Mot de passe oublié ?
+          </Link>
+        </p>
+
+        <p className="text-center text-sm text-muted-foreground">
           Pas encore de compte ?{" "}
           <Link href="/register" className="text-primary hover:underline font-medium">
             S&apos;inscrire
