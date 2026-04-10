@@ -3,6 +3,9 @@ import { welcomeLessons } from "./seed-data/welcome";
 import { mindsetLessons } from "./seed-data/mindset";
 import { gatekeeperLessons } from "./seed-data/gatekeeper";
 import { openerLessons } from "./seed-data/opener";
+import { pitchLessons } from "./seed-data/pitch";
+import { structureLessons } from "./seed-data/structure";
+import { objectionLessons } from "./seed-data/objection";
 
 const prisma = new PrismaClient();
 
@@ -74,6 +77,9 @@ async function seedLessons(): Promise<void> {
     ["01 - The Mindset", mindsetLessons as LessonData[]],
     ["02A - The Gatekeeper", gatekeeperLessons as LessonData[]],
     ["02B - The Opener", openerLessons as LessonData[]],
+    ["03 - The Pitch", pitchLessons as LessonData[]],
+    ["04 - The Structure", structureLessons as LessonData[]],
+    ["05 - Objection", objectionLessons as LessonData[]],
     // Additional modules added as they are imported:
     // ["02A - The Gatekeeper", gatekeeperLessons as LessonData[]],
     // ["02B - The Opener", openerLessons as LessonData[]],
