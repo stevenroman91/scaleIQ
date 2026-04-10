@@ -1,5 +1,6 @@
+import Link from "next/link";
 import { db } from "@/lib/db";
-import { FileText, Search } from "lucide-react";
+import { FileText } from "lucide-react";
 
 export const dynamic = "force-dynamic";
 
@@ -37,9 +38,10 @@ export default async function WikiPage() {
             <h2 className="text-lg font-semibold mb-3 capitalize">{category}</h2>
             <div className="grid gap-2">
               {arts.map((article) => (
-                <div
+                <Link
                   key={article.id}
-                  className="bg-card border border-border rounded-lg p-4 flex items-center gap-3"
+                  href={`/academy/wiki/${article.slug}`}
+                  className="bg-card border border-border rounded-lg p-4 flex items-center gap-3 hover:bg-accent transition-colors"
                 >
                   <FileText className="w-5 h-5 text-muted-foreground flex-shrink-0" />
                   <div>
@@ -48,7 +50,7 @@ export default async function WikiPage() {
                       Mis à jour le {article.updatedAt.toLocaleDateString("fr-FR")}
                     </p>
                   </div>
-                </div>
+                </Link>
               ))}
             </div>
           </div>
