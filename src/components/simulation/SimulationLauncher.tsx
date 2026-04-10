@@ -22,6 +22,7 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Record<string, unknown> | null>(null);
+  const [errorBanner, setErrorBanner] = useState<string | null>(null);
 
   // Audio state
   const [isRecording, setIsRecording] = useState(false);
@@ -29,6 +30,8 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
   const [audioEnabled, setAudioEnabled] = useState(true); // false if key missing or mic denied
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<BlobPart[]>([]);
+  const retryTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryFnRef = useRef<(() => void) | null>(null);
 
   // Check mic availability on mount
   useEffect(() => {
@@ -44,6 +47,33 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
       })
       .catch(() => setMicAllowed(true)); // assume allowed if permissions API unavailable
   }, []);
+
+  useEffect(() => {
+    return () => {
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
+
+  const dismissError = () => {
+    setErrorBanner(null);
+    if (retryTimerRef.current) {
+      clearTimeout(retryTimerRef.current);
+      retryTimerRef.current = null;
+    }
+    retryFnRef.current = null;
+  };
+
+  const showSimError = (errData: { error: string; code: string; retryable: boolean }, retryFn: () => void) => {
+    setErrorBanner(errData.error);
+    retryFnRef.current = retryFn;
+    if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    if (errData.code === "LLM_RATE_LIMITED" && errData.retryable) {
+      retryTimerRef.current = setTimeout(() => {
+        setErrorBanner(null);
+        retryFn();
+      }, 5000);
+    }
+  };
 
   const playTTS = async (text: string, simId: string) => {
     if (!audioEnabled || !text) return;
@@ -71,6 +101,7 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
   const startSimulation = async () => {
     if (!session?.user?.id) return;
     setLoading(true);
+    setErrorBanner(null);
     const res = await fetch("/api/simulation", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,6 +120,9 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
       if (firstMsg?.role === "assistant") {
         await playTTS(firstMsg.content, data.simulationId);
       }
+    } else {
+      const errData = await res.json().catch(() => ({ error: "La simulation est indisponible.", code: "LLM_UNAVAILABLE", retryable: false }));
+      showSimError(errData, startSimulation);
     }
     setLoading(false);
   };
@@ -96,6 +130,7 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
   const sendMessageText = async (text: string) => {
     if (!text.trim() || !simulationId) return;
     setLoading(true);
+    setErrorBanner(null);
 
     const res = await fetch("/api/simulation", {
       method: "POST",
@@ -113,6 +148,9 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
       if (data.lastResponse) {
         await playTTS(data.lastResponse, simulationId);
       }
+    } else {
+      const errData = await res.json().catch(() => ({ error: "La simulation est indisponible.", code: "LLM_UNAVAILABLE", retryable: false }));
+      showSimError(errData, () => sendMessageText(text));
     }
     setLoading(false);
   };
@@ -186,6 +224,7 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
       });
       if (res.status === 503) {
         setAudioEnabled(false);
+        setErrorBanner("La transcription vocale est indisponible : OPENAI_API_KEY manquante.");
         setLoading(false);
         return;
       }
@@ -224,14 +263,29 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
   // Not started yet
   if (!simulationId) {
     return (
-      <button
-        onClick={startSimulation}
-        disabled={loading}
-        className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition w-full justify-center"
-      >
-        {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
-        Lancer la simulation
-      </button>
+      <div className="space-y-2">
+        {errorBanner && (
+          <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <span className="flex-1">{errorBanner}</span>
+            <div className="flex gap-2 shrink-0">
+              {retryFnRef.current && (
+                <button onClick={() => { dismissError(); retryFnRef.current?.(); }} className="underline font-medium hover:text-red-900">
+                  Réessayer
+                </button>
+              )}
+              <button onClick={dismissError} className="hover:text-red-900">✕</button>
+            </div>
+          </div>
+        )}
+        <button
+          onClick={startSimulation}
+          disabled={loading}
+          className="flex items-center gap-2 px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm font-medium hover:bg-primary/90 transition w-full justify-center"
+        >
+          {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Phone className="w-4 h-4" />}
+          Lancer la simulation
+        </button>
+      </div>
     );
   }
 
@@ -271,6 +325,21 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
   // Active simulation
   return (
     <div className="space-y-3">
+      {/* Error banner */}
+      {errorBanner && (
+        <div className="flex items-start gap-2 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+          <span className="flex-1">{errorBanner}</span>
+          <div className="flex gap-2 shrink-0">
+            {retryFnRef.current && (
+              <button onClick={() => { const fn = retryFnRef.current; dismissError(); fn?.(); }} className="underline font-medium hover:text-red-900">
+                Réessayer
+              </button>
+            )}
+            <button onClick={dismissError} className="hover:text-red-900">✕</button>
+          </div>
+        </div>
+      )}
+
       {/* Audio unavailable notice */}
       {(!audioEnabled || micAllowed === false) && (
         <p className="text-xs text-muted-foreground text-center">

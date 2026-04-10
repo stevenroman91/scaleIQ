@@ -3,6 +3,20 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { getSimulationResponse, scoreSimulation } from "@/lib/services/call-simulation";
 
+function classifySimError(error: unknown): { error: string; code: string; retryable: boolean } {
+  const msg = error instanceof Error ? error.message : "Erreur inconnue";
+  if (msg.startsWith("ANTHROPIC_API_KEY") || msg.startsWith("LLM_AUTH")) {
+    return { error: "La simulation est indisponible : clé API manquante. Contactez l'administrateur.", code: "LLM_AUTH", retryable: false };
+  }
+  if (msg.startsWith("LLM_RATE_LIMITED")) {
+    return { error: "Trop de requêtes. Réessayez dans quelques secondes.", code: "LLM_RATE_LIMITED", retryable: true };
+  }
+  if (msg.startsWith("LLM_TIMEOUT")) {
+    return { error: "Délai d'attente dépassé. Réessayez.", code: "LLM_TIMEOUT", retryable: true };
+  }
+  return { error: "La simulation est temporairement indisponible.", code: "LLM_UNAVAILABLE", retryable: true };
+}
+
 // POST: Start a new simulation or send a message
 export async function POST(req: Request) {
   const { action, simulationId, profileId, message } = await req.json();
@@ -32,13 +46,19 @@ export async function POST(req: Request) {
     });
 
     // Get initial AI greeting
-    const aiResponse = await getSimulationResponse(
-      profile.systemPrompt,
-      [{ role: "user", content: "Bonjour, je vous appelle au sujet de..." }]
-    );
+    let aiResponse: string;
+    try {
+      aiResponse = await getSimulationResponse(
+        profile.systemPrompt,
+        [{ role: "user", content: "Bonjour, je vous appelle au sujet de..." }]
+      );
+    } catch (error) {
+      await db.callSimulation.delete({ where: { id: simulation.id } });
+      return NextResponse.json(classifySimError(error), { status: 503 });
+    }
 
     const initialTranscript = [
-      { role: "assistant", content: aiResponse || "Allô, oui ?", timestamp: Date.now() },
+      { role: "assistant", content: aiResponse, timestamp: Date.now() },
     ];
 
     await db.callSimulation.update({
@@ -81,14 +101,17 @@ export async function POST(req: Request) {
       content: t.content,
     }));
 
-    const aiResponse = await getSimulationResponse(
-      simulation.profile.systemPrompt,
-      conversationForAI
-    );
-
-    if (aiResponse) {
-      transcript.push({ role: "assistant", content: aiResponse, timestamp: Date.now() });
+    let aiResponse: string;
+    try {
+      aiResponse = await getSimulationResponse(
+        simulation.profile.systemPrompt,
+        conversationForAI
+      );
+    } catch (error) {
+      return NextResponse.json(classifySimError(error), { status: 503 });
     }
+
+    transcript.push({ role: "assistant", content: aiResponse, timestamp: Date.now() });
 
     await db.callSimulation.update({
       where: { id: simulationId },

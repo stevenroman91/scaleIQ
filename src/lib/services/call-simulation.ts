@@ -31,12 +31,13 @@ Transcription de la simulation :
 /**
  * Get the next AI response in a call simulation.
  * The AI plays the role of a prospect with the given objection profile.
+ * Throws a typed error on failure — never returns null.
  */
 export async function getSimulationResponse(
   profileSystemPrompt: string,
   conversation: { role: string; content: string }[]
-): Promise<string | null> {
-  if (!anthropic) return null;
+): Promise<string> {
+  if (!anthropic) throw new Error("ANTHROPIC_API_KEY not configured");
 
   try {
     const response = await anthropic.messages.create({
@@ -49,10 +50,16 @@ export async function getSimulationResponse(
       })),
     });
 
-    return response.content[0].type === "text" ? response.content[0].text : null;
+    const text = response.content[0].type === "text" ? response.content[0].text : null;
+    if (!text) throw new Error("LLM_UNAVAILABLE: Empty response from AI");
+    return text;
   } catch (error) {
-    console.error("Simulation response failed:", error);
-    return null;
+    const status = (error as { status?: number }).status;
+    if (status === 401) throw new Error("LLM_AUTH: Clé API invalide");
+    if (status === 429) throw new Error("LLM_RATE_LIMITED: Limite de requêtes atteinte");
+    if (status === 408 || status === 504) throw new Error("LLM_TIMEOUT: Délai d'attente dépassé");
+    if (error instanceof Error) throw error;
+    throw new Error("LLM_UNAVAILABLE: Erreur inconnue");
   }
 }
 
