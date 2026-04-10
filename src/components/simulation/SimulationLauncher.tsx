@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Phone, Send, PhoneOff, Loader2 } from "lucide-react";
 
 interface Props {
@@ -15,6 +16,7 @@ interface Message {
 }
 
 export function SimulationLauncher({ profileId, profileName }: Props) {
+  const { data: session, status } = useSession();
   const [simulationId, setSimulationId] = useState<string | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -22,6 +24,7 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
   const [results, setResults] = useState<Record<string, unknown> | null>(null);
 
   const startSimulation = async () => {
+    if (!session?.user?.id) return;
     setLoading(true);
     const res = await fetch("/api/simulation", {
       method: "POST",
@@ -29,7 +32,6 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
       body: JSON.stringify({
         action: "start",
         profileId,
-        userId: "demo-user", // In production, use actual user ID
       }),
     });
 
@@ -79,6 +81,25 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
     }
     setLoading(false);
   };
+
+  // Loading session
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center py-3 text-muted-foreground text-sm">
+        <Loader2 className="w-4 h-4 animate-spin mr-2" />
+        Chargement...
+      </div>
+    );
+  }
+
+  // Not authenticated
+  if (!session?.user?.id) {
+    return (
+      <p className="text-sm text-center text-muted-foreground py-2">
+        Veuillez vous <a href="/login" className="underline text-primary">connecter</a> pour lancer une simulation.
+      </p>
+    );
+  }
 
   // Not started yet
   if (!simulationId) {
