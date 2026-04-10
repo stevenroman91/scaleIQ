@@ -1,8 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Phone, Send, PhoneOff, Loader2 } from "lucide-react";
+import { Phone, Send, PhoneOff, Loader2, Mic, MicOff } from "lucide-react";
 
 interface Props {
   profileId: string;
@@ -23,6 +23,51 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
   const [loading, setLoading] = useState(false);
   const [results, setResults] = useState<Record<string, unknown> | null>(null);
 
+  // Audio state
+  const [isRecording, setIsRecording] = useState(false);
+  const [micAllowed, setMicAllowed] = useState<boolean | null>(null); // null = unknown
+  const [audioEnabled, setAudioEnabled] = useState(true); // false if key missing or mic denied
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<BlobPart[]>([]);
+
+  // Check mic availability on mount
+  useEffect(() => {
+    if (typeof window === "undefined" || !navigator.mediaDevices) {
+      setMicAllowed(false);
+      return;
+    }
+    navigator.permissions
+      .query({ name: "microphone" as PermissionName })
+      .then((result) => {
+        setMicAllowed(result.state !== "denied");
+        result.onchange = () => setMicAllowed(result.state !== "denied");
+      })
+      .catch(() => setMicAllowed(true)); // assume allowed if permissions API unavailable
+  }, []);
+
+  const playTTS = async (text: string, simId: string) => {
+    if (!audioEnabled || !text) return;
+    try {
+      const res = await fetch(`/api/simulations/${simId}/tts`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      if (res.status === 503) {
+        setAudioEnabled(false);
+        return;
+      }
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onended = () => URL.revokeObjectURL(url);
+      await audio.play().catch(() => {/* autoplay blocked — silently skip */});
+    } catch {
+      // network error — silently skip
+    }
+  };
+
   const startSimulation = async () => {
     if (!session?.user?.id) return;
     setLoading(true);
@@ -39,12 +84,17 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
       const data = await res.json();
       setSimulationId(data.simulationId);
       setMessages(data.transcript);
+      // Autoplay initial AI greeting
+      const firstMsg = data.transcript?.[0];
+      if (firstMsg?.role === "assistant") {
+        await playTTS(firstMsg.content, data.simulationId);
+      }
     }
     setLoading(false);
   };
 
-  const sendMessage = async () => {
-    if (!input.trim() || !simulationId) return;
+  const sendMessageText = async (text: string) => {
+    if (!text.trim() || !simulationId) return;
     setLoading(true);
 
     const res = await fetch("/api/simulation", {
@@ -53,16 +103,25 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
       body: JSON.stringify({
         action: "message",
         simulationId,
-        message: input,
+        message: text,
       }),
     });
 
     if (res.ok) {
       const data = await res.json();
       setMessages(data.transcript);
+      if (data.lastResponse) {
+        await playTTS(data.lastResponse, simulationId);
+      }
     }
-    setInput("");
     setLoading(false);
+  };
+
+  const sendMessage = async () => {
+    if (!input.trim()) return;
+    const text = input;
+    setInput("");
+    await sendMessageText(text);
   };
 
   const endSimulation = async () => {
@@ -78,6 +137,67 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
     if (res.ok) {
       const data = await res.json();
       setResults(data);
+    }
+    setLoading(false);
+  };
+
+  const startRecording = async () => {
+    if (!simulationId || loading) return;
+    chunksRef.current = [];
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      setMicAllowed(true);
+      const recorder = new MediaRecorder(stream);
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+      recorder.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const mimeType = recorder.mimeType || "audio/webm";
+        const blob = new Blob(chunksRef.current, { type: mimeType });
+        await transcribeAudio(blob);
+      };
+      recorder.start();
+      mediaRecorderRef.current = recorder;
+      setIsRecording(true);
+    } catch {
+      setMicAllowed(false);
+      setAudioEnabled(false);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      mediaRecorderRef.current = null;
+      setIsRecording(false);
+    }
+  };
+
+  const transcribeAudio = async (blob: Blob) => {
+    if (!simulationId) return;
+    setLoading(true);
+    try {
+      const formData = new FormData();
+      formData.append("audio", blob, "recording.webm");
+      const res = await fetch(`/api/simulations/${simulationId}/stt`, {
+        method: "POST",
+        body: formData,
+      });
+      if (res.status === 503) {
+        setAudioEnabled(false);
+        setLoading(false);
+        return;
+      }
+      if (res.ok) {
+        const { text } = await res.json();
+        if (text?.trim()) {
+          await sendMessageText(text.trim());
+          return;
+        }
+      }
+    } catch {
+      // silently fall back to text input
     }
     setLoading(false);
   };
@@ -146,9 +266,18 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
     );
   }
 
+  const showMicButton = micAllowed !== false && audioEnabled;
+
   // Active simulation
   return (
     <div className="space-y-3">
+      {/* Audio unavailable notice */}
+      {(!audioEnabled || micAllowed === false) && (
+        <p className="text-xs text-muted-foreground text-center">
+          Mode texte — micro non disponible ou clé API manquante.
+        </p>
+      )}
+
       {/* Chat area */}
       <div className="h-48 overflow-y-auto space-y-2 bg-muted/50 rounded-lg p-3">
         {messages.map((msg, i) => (
@@ -181,15 +310,32 @@ export function SimulationLauncher({ profileId, profileName }: Props) {
           onKeyDown={(e) => e.key === "Enter" && sendMessage()}
           placeholder="Votre réponse..."
           className="flex-1 px-3 py-2 bg-background border border-border rounded-lg text-sm"
-          disabled={loading}
+          disabled={loading || isRecording}
         />
         <button
           onClick={sendMessage}
-          disabled={loading || !input.trim()}
+          disabled={loading || !input.trim() || isRecording}
           className="p-2 bg-primary text-primary-foreground rounded-lg hover:bg-primary/90 transition"
         >
           <Send className="w-4 h-4" />
         </button>
+        {showMicButton && (
+          <button
+            onMouseDown={startRecording}
+            onMouseUp={stopRecording}
+            onTouchStart={startRecording}
+            onTouchEnd={stopRecording}
+            disabled={loading && !isRecording}
+            title={isRecording ? "Relâcher pour envoyer" : "Maintenir pour parler"}
+            className={`p-2 rounded-lg transition ${
+              isRecording
+                ? "bg-red-600 text-white animate-pulse"
+                : "bg-secondary text-secondary-foreground hover:bg-secondary/80"
+            }`}
+          >
+            {isRecording ? <MicOff className="w-4 h-4" /> : <Mic className="w-4 h-4" />}
+          </button>
+        )}
         <button
           onClick={endSimulation}
           disabled={loading}
