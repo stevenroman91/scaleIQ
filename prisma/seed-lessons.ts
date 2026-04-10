@@ -6,6 +6,11 @@ import { openerLessons } from "./seed-data/opener";
 import { pitchLessons } from "./seed-data/pitch";
 import { structureLessons } from "./seed-data/structure";
 import { objectionLessons } from "./seed-data/objection";
+import { qualifyingLessons } from "./seed-data/qualifying";
+import { disqualifyingLessons } from "./seed-data/disqualifying";
+import { oneLastQuestionLessons } from "./seed-data/one-last-question";
+import { closingLessons } from "./seed-data/closing";
+import { understandingPerformanceLessons } from "./seed-data/understanding-performance";
 
 const prisma = new PrismaClient();
 
@@ -80,6 +85,11 @@ async function seedLessons(): Promise<void> {
     ["03 - The Pitch", pitchLessons as LessonData[]],
     ["04 - The Structure", structureLessons as LessonData[]],
     ["05 - Objection", objectionLessons as LessonData[]],
+    ["06 - Qualifying Questions", qualifyingLessons as LessonData[]],
+    ["07 - Disqualifying", disqualifyingLessons as LessonData[]],
+    ["08 - One Last Question", oneLastQuestionLessons as LessonData[]],
+    ["09 - Closing", closingLessons as LessonData[]],
+    ["10 - Understanding Performance", understandingPerformanceLessons as LessonData[]],
     // Additional modules added as they are imported:
     // ["02A - The Gatekeeper", gatekeeperLessons as LessonData[]],
     // ["02B - The Opener", openerLessons as LessonData[]],
