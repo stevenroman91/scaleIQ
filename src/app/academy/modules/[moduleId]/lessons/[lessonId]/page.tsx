@@ -7,70 +7,7 @@ import Link from "next/link";
 import { ArrowLeft, BookOpen, Video, HelpCircle } from "lucide-react";
 import QuizPlayer from "@/components/academy/QuizPlayer";
 import LessonActions from "@/components/academy/LessonActions";
-
-function renderMarkdown(content: string): string {
-  let html = content;
-
-  // Escape HTML
-  html = html.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-
-  // Headers
-  html = html.replace(/^### (.+)$/gm, '<h3 class="text-lg font-semibold mt-6 mb-2">$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2 class="text-xl font-bold mt-8 mb-3">$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1 class="text-2xl font-bold mt-8 mb-4">$1</h1>');
-
-  // Bold and italic
-  html = html.replace(/\*\*\*(.+?)\*\*\*/g, "<strong><em>$1</em></strong>");
-  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  html = html.replace(/\*(.+?)\*/g, "<em>$1</em>");
-
-  // Inline code
-  html = html.replace(
-    /`([^`]+)`/g,
-    '<code class="bg-muted px-1.5 py-0.5 rounded text-sm">$1</code>'
-  );
-
-  // Unordered lists
-  html = html.replace(
-    /^- (.+)$/gm,
-    '<li class="ml-4 list-disc text-sm leading-relaxed">$1</li>'
-  );
-
-  // Ordered lists
-  html = html.replace(
-    /^\d+\. (.+)$/gm,
-    '<li class="ml-4 list-decimal text-sm leading-relaxed">$1</li>'
-  );
-
-  // Blockquotes
-  html = html.replace(
-    /^&gt; (.+)$/gm,
-    '<blockquote class="border-l-4 border-primary pl-4 italic text-muted-foreground my-4">$1</blockquote>'
-  );
-
-  // Horizontal rules
-  html = html.replace(/^---$/gm, '<hr class="my-6 border-border" />');
-
-  // Links
-  html = html.replace(
-    /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" class="text-primary underline hover:text-primary/80" target="_blank" rel="noopener">$1</a>'
-  );
-
-  // Paragraphs: replace double newlines with paragraph breaks
-  html = html.replace(/\n\n/g, '</p><p class="text-sm leading-relaxed mb-4">');
-
-  // Single newlines to <br> within paragraphs
-  html = html.replace(/\n/g, "<br />");
-
-  // Wrap in paragraph
-  html = '<p class="text-sm leading-relaxed mb-4">' + html + "</p>";
-
-  // Clean up empty paragraphs
-  html = html.replace(/<p class="text-sm leading-relaxed mb-4"><\/p>/g, "");
-
-  return html;
-}
+import MarkdownRenderer from "@/components/academy/MarkdownRenderer";
 
 export default async function LessonDetailPage({
   params,
@@ -146,10 +83,9 @@ export default async function LessonDetailPage({
 
       {/* Content */}
       {lesson.type === "ARTICLE" && lesson.content && (
-        <div
-          className="bg-card border border-border rounded-xl p-6 prose-custom"
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(lesson.content) }}
-        />
+        <div className="bg-card border border-border rounded-xl p-6">
+          <MarkdownRenderer content={lesson.content} />
+        </div>
       )}
 
       {lesson.type === "VIDEO" && lesson.content && (
